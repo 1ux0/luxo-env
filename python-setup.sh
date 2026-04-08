@@ -1,6 +1,8 @@
 #!/bin/bash
+set -e
 
-source color.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/utils.sh"
 
 echo "== python-setup.sh =="
 

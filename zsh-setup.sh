@@ -1,22 +1,23 @@
-#!/bin/zsh
+#!/bin/bash
+set -e
 
-source color.sh
-source luxo.conf
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/utils.sh"
+source "$SCRIPT_DIR/luxo.conf"
 
 echo "== zsh-setup.sh =="
 
 # check if zsh is installed
 if ! command -v zsh >/dev/null 2>&1;
-then 
+then
     print_red "Error: zsh is not installed"
     exit 1
 else
-    # enable zsh
     zsh --version
-    if [[ $(which zsh) != ${SHELL} ]];
+    if [[ "$(which zsh)" != "${SHELL}" ]];
     then
         print_yellow "Setting zsh as default shell"
-        chsh -s $(which zsh)
+        chsh -s "$(which zsh)"
     fi
 fi
 
@@ -26,9 +27,6 @@ then
     print_yellow "Creating .zshrc"
     touch "${ZSH_PROFILE_PATH}"
 fi
-
-print_yellow "Enabling zsh extended globbing"
-setopt EXTENDED_GLOB
 
 # ========= PREZTO SETUP =========
 
@@ -44,31 +42,53 @@ else
 fi
 
 echo "Symlinking prezto runcoms"
-# symlink files excluding README.md (e.g. .preztorc) 
-for RUNCOM_FILE in ${PREZTO_DIR}/runcoms/^README.md(.N); do
-  TARGET_FILE="${HOME}/.${RUNCOM_FILE:t}"
-    if [ -e "$TARGET_FILE" ]; then
-        # append the contents of $rcfile to $target if not already present
-        if ! grep -qF "$(cat $RUNCOM_FILE)" "$TARGET_FILE"; then
-            echo "\n# === added automatically by zsh-setup.sh ===" >> "$TARGET_FILE"
-            cat "$RUNCOM_FILE" >> "$TARGET_FILE"
-            echo "# === added automatically by zsh-setup.sh ===\n" >> "$TARGET_FILE"
-        fi
-    else
-      # if the file doesn't exist, create a symlink
-      ln -s "$RUNCOM_FILE" "$TARGET_FILE"
+# symlink runcom files, excluding README.md
+for RUNCOM_FILE in "${PREZTO_DIR}"/runcoms/*; do
+  [[ "$(basename "$RUNCOM_FILE")" == "README.md" ]] && continue
+  TARGET_FILE="${HOME}/.$(basename "$RUNCOM_FILE")"
+  if [ -e "$TARGET_FILE" ];
+  then
+    MARKER="prezto-runcom:$(basename "$RUNCOM_FILE")"
+    if needs_append "$TARGET_FILE" "$MARKER";
+    then
+      printf '\n# === %s ===\n' "$MARKER" >> "$TARGET_FILE"
+      cat "$RUNCOM_FILE" >> "$TARGET_FILE"
+      printf '# === %s ===\n' "$MARKER" >> "$TARGET_FILE"
     fi
+  else
+    ln -s "$RUNCOM_FILE" "$TARGET_FILE"
+  fi
 done
 
-echo "Enabling theme"
-cat << EOF >> "$HOME/.zpreztorc"
+# set_zstyle - find and replace a zstyle setting in .zpreztorc,
+# or append it if not found. This is needed because zstyle lookups return the
+# first match, so appending after an existing value has no effect.
+set_zstyle() {
+  local context="$1" style="$2" value="$3"
+  local new_line="zstyle '${context}' ${style} '${value}'"
 
-# === added automatically by the zsh-setup.sh ===
-zstyle ':prezto:module:editor' key-bindings 'vi'
-zstyle ':prezto:module:prompt' theme 'smiley'
-zstyle ':prezto:module:prompt' pwd-length 'long'
-# === added automatically by the zsh-setup.sh ===
+  if grep -qE "^#?[[:space:]]*zstyle '${context}' ${style} " "$PREZTORC_PATH"; then
+    print_yellow "Replacing existing ${style} in .zpreztorc"
+    sed -i '' "s|^#*[[:space:]]*zstyle '${context}' ${style} .*|${new_line}|" "$PREZTORC_PATH"
+  else
+    print_yellow "Appending ${style} to .zpreztorc"
+    echo "${new_line}" >> "$PREZTORC_PATH"
+  fi
+}
 
+echo "Configuring prezto settings"
+set_zstyle ':prezto:module:editor' 'key-bindings' 'vi'
+set_zstyle ':prezto:module:prompt' 'theme' 'smiley'
+set_zstyle ':prezto:module:prompt' 'pwd-length' 'long'
+
+if needs_append "$HOME/.zshrc" "zprezto/init.zsh";
+then
+  cat << 'EOF' >> "$HOME/.zshrc"
+
+# === added automatically by zsh-setup.sh ===
+source "${ZDOTDIR:-$HOME}/.zprezto/init.zsh"
+# === added automatically by zsh-setup.sh ===
 EOF
+fi
 
 print_green "Done"

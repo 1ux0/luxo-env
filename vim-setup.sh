@@ -1,7 +1,9 @@
 #!/bin/bash
+set -e
 
-source color.sh
-source luxo.conf
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/utils.sh"
+source "$SCRIPT_DIR/luxo.conf"
 
 echo "== vim-setup.sh =="
 
@@ -33,15 +35,13 @@ inoremap jj <ESC>
 :set wrap
 
 set termguicolors     " enable true colors support
-let ayucolor="light"  " for light version of theme
-let ayucolor="mirage" " for mirage version of theme
-let ayucolor="dark"   " for dark version of theme
+let ayucolor="dark"   " options: light, mirage, dark
 colorscheme ayu
 
 set autochdir
 filetype indent on
 set smartindent
-autocmd BufRead,BufWritePre *.sh normal gg=G
+autocmd BufNewFile *.sh normal gg=G
 set backspace=indent,eol,start
 EOF
 

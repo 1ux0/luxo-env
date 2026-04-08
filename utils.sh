@@ -1,4 +1,4 @@
-# zsh color definitions
+# shared utilities
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 RED='\033[0;31m'
@@ -19,4 +19,10 @@ print_red() {
 
 print_blue() {
   echo -e "${BLUE}$1${RESET}"
+}
+
+needs_append() {
+  local file="$1"
+  local marker="$2"
+  ! grep -qF "$marker" "$file"
 }
